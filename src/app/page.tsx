@@ -25,7 +25,7 @@ export default async function HomePage() {
       .from('reservations')
       .select('meeting_id')
       .eq('user_id', user.id)
-    myReservations = (data ?? []).map((r: any) => r.meeting_id)
+    myReservations = (data ?? []).map((r: { meeting_id: string }) => r.meeting_id)
   }
 
   const { data: meetings } = await supabase
@@ -106,9 +106,11 @@ export default async function HomePage() {
               const date = new Date(meeting.meet_date)
 
               // 예약자 중 수강생만 추출
-              const students = (meeting.reservations ?? [])
-                .map((r: any) => Array.isArray(r.users) ? r.users[0] : r.users)
-                .filter((u: any) => u && u.role === 'student')
+              type ReservationUser = { id: string; name: string; level: string | null; role: string } | null
+              type ReservationRow = { users: ReservationUser | ReservationUser[] }
+              const students = (meeting.reservations as ReservationRow[] ?? [])
+                .map((r) => Array.isArray(r.users) ? r.users[0] : r.users)
+                .filter((u): u is NonNullable<ReservationUser> => !!u && u.role === 'student')
 
               return (
                 <div key={meeting.id} className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
@@ -170,7 +172,7 @@ export default async function HomePage() {
                         </div>
                       )}
                       {/* 수강생 */}
-                      {students.map((student: any) => (
+                      {students.map((student) => (
                         <div key={student.id} className="flex items-center gap-1.5 text-sm">
                           <span className="text-gray-800">{student.name}</span>
                           {student.level && (

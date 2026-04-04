@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     })
 
     const names = (meeting.reservations ?? [])
-      .map((r: any) => {
+      .map((r: { users: { name: string } | { name: string }[] | null }) => {
         const u = Array.isArray(r.users) ? r.users[0] : r.users
         return u?.name ?? ''
       })
@@ -84,9 +84,9 @@ export async function GET(request: Request) {
         text,
       })
       results.push({ meetingId: meeting.id, status: 'sent' })
-    } catch (e: any) {
+    } catch (e) {
       console.error('문자 발송 오류:', e)
-      results.push({ meetingId: meeting.id, status: 'failed', error: e.message })
+      results.push({ meetingId: meeting.id, status: 'failed', error: String(e) })
     }
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import SolapiMessageService from 'solapi'
+import { SolapiMessageService } from 'solapi'
 
 export async function GET(request: Request) {
   // Vercel cron 보안 헤더 확인

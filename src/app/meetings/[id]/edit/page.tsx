@@ -20,6 +20,7 @@ export default function EditMeetingPage() {
     center_id: '',
     meet_date: '',
     meet_time: '09:00',
+    end_date: '',
     max_participants: 8,
     description: '',
   })
@@ -36,7 +37,7 @@ export default function EditMeetingPage() {
       // 기존 모임 데이터 로드
       const { data: meeting } = await supabase
         .from('meetings')
-        .select('*')
+        .select('id, instructor_id, center_id, meet_date, end_date, max_participants, description')
         .eq('id', id)
         .single()
 
@@ -49,10 +50,15 @@ export default function EditMeetingPage() {
       const dateStr = date.toISOString().slice(0, 10)
       const timeStr = date.toTimeString().slice(0, 5)
 
+      const endDateStr = meeting.end_date
+        ? new Date(meeting.end_date).toISOString().slice(0, 10)
+        : ''
+
       setForm({
         center_id: meeting.center_id,
         meet_date: dateStr,
         meet_time: timeStr,
+        end_date: endDateStr,
         max_participants: meeting.max_participants,
         description: meeting.description ?? '',
       })
@@ -83,6 +89,7 @@ export default function EditMeetingPage() {
       .update({
         center_id: form.center_id,
         meet_date: meet_date.toISOString(),
+        end_date: form.end_date ? new Date(form.end_date + 'T23:59:59').toISOString() : null,
         max_participants: Number(form.max_participants),
         description: form.description || null,
       })
@@ -143,7 +150,7 @@ export default function EditMeetingPage() {
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">날짜</label>
+              <label className="block text-sm font-medium mb-1">모임 날짜</label>
               <input
                 type="date"
                 name="meet_date"
@@ -164,6 +171,18 @@ export default function EditMeetingPage() {
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">신청 마감일 <span className="text-gray-400">(선택)</span></label>
+            <input
+              type="date"
+              name="end_date"
+              value={form.end_date}
+              max={form.meet_date ? new Date(new Date(form.meet_date).getTime() - 2 * 86400000).toISOString().slice(0, 10) : undefined}
+              onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           <div>

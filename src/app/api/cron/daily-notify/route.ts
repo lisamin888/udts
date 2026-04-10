@@ -11,6 +11,50 @@ export async function GET(request: Request) {
 
   const supabase = await createClient()
 
+  // ── 참여 횟수 업데이트 ──────────────────────────────────────
+  // 날짜가 지난 모임의 attended=false 예약을 찾아 attend_count +1
+  const { data: pastReservations } = await supabase
+    .from('reservations')
+    .select('id, user_id, meetings(meet_date, end_date)')
+    .eq('attended', false)
+    .in('status', ['pending', 'confirmed'])
+
+  const nowDate = new Date()
+  const toAttend = (pastReservations ?? []).filter((r) => {
+    const m = Array.isArray(r.meetings) ? r.meetings[0] : r.meetings
+    if (!m) return false
+    const cutoff = (m as { end_date?: string | null; meet_date: string }).end_date
+      ? new Date((m as { end_date: string }).end_date)
+      : new Date((m as { meet_date: string }).meet_date)
+    return cutoff < nowDate
+  })
+
+  if (toAttend.length > 0) {
+    // 유저별 횟수 집계
+    const userCounts: Record<string, number> = {}
+    for (const r of toAttend) {
+      userCounts[r.user_id] = (userCounts[r.user_id] ?? 0) + 1
+    }
+    // 유저별 attend_count 증가
+    for (const [userId, count] of Object.entries(userCounts)) {
+      const { data: u } = await supabase
+        .from('users')
+        .select('attend_count')
+        .eq('id', userId)
+        .single()
+      await supabase
+        .from('users')
+        .update({ attend_count: ((u as { attend_count?: number } | null)?.attend_count ?? 0) + count })
+        .eq('id', userId)
+    }
+    // attended 플래그 업데이트
+    await supabase
+      .from('reservations')
+      .update({ attended: true })
+      .in('id', toAttend.map(r => r.id))
+  }
+  // ────────────────────────────────────────────────────────────
+
   // 내일 날짜 범위 계산
   const now = new Date()
   const tomorrow = new Date(now)
@@ -28,7 +72,7 @@ export async function GET(request: Request) {
       current_count,
       dive_centers ( name ),
       reservations (
-        users ( name )
+        users ( nickname )
       )
     `)
     .gte('meet_date', tomorrow.toISOString())
@@ -64,14 +108,14 @@ export async function GET(request: Request) {
     })
 
     const names = (meeting.reservations ?? [])
-      .map((r: { users: { name: string } | { name: string }[] | null }) => {
+      .map((r: { users: { nickname: string } | { nickname: string }[] | null }) => {
         const u = Array.isArray(r.users) ? r.users[0] : r.users
-        return u?.name ?? ''
+        return u?.nickname ?? ''
       })
       .filter(Boolean)
 
     const text = [
-      '[UDTS 내일 모임 안내]',
+      '[UTS 내일 모임 안내]',
       `📍 ${center?.name ?? '센터 미정'}`,
       `🕙 ${timeStr}`,
       `👥 ${names.join(', ')} (총 ${names.length}명)`,

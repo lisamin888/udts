@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { signupAction } from '@/app/actions/signup'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -13,9 +13,11 @@ export default function SignupPage() {
     name: '',
     phone: '',
     role: 'student',
+    instructorCode: '',
     dive_type: 'scuba',
     level: '',
   })
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -25,35 +27,17 @@ export default function SignupPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    if (!privacyAgreed) {
+      setError('개인정보 수집 및 이용에 동의해주세요.')
+      return
+    }
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
+    const result = await signupAction(form)
 
-    // 1. Supabase Auth 회원가입
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-    })
-
-    if (authError || !data.user) {
-      setError(authError?.message ?? '회원가입에 실패했습니다.')
-      setLoading(false)
-      return
-    }
-
-    // 2. users 테이블에 프로필 저장
-    const { error: profileError } = await supabase.from('users').insert({
-      id: data.user.id,
-      name: form.name,
-      phone: form.phone,
-      role: form.role,
-      dive_type: form.dive_type,
-      level: form.level || null,
-    })
-
-    if (profileError) {
-      setError('프로필 저장에 실패했습니다.')
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
       return
     }
@@ -69,7 +53,7 @@ export default function SignupPage() {
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">이름</label>
+            <label className="block text-sm font-medium mb-1">닉네임</label>
             <input
               name="name"
               value={form.name}
@@ -108,7 +92,10 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">전화번호</label>
+            <label className="block text-sm font-medium mb-1">
+              전화번호
+              <span className="ml-1 text-gray-400 font-normal">(알림 수신용, 선택)</span>
+            </label>
             <input
               name="phone"
               value={form.phone}
@@ -130,6 +117,21 @@ export default function SignupPage() {
               <option value="instructor">강사</option>
             </select>
           </div>
+
+          {form.role === 'instructor' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">강사 코드</label>
+              <input
+                name="instructorCode"
+                type="password"
+                value={form.instructorCode}
+                onChange={handleChange}
+                required
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="관리자에게 문의하세요"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">다이빙 종류</label>
@@ -154,6 +156,25 @@ export default function SignupPage() {
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="예: OWD, AIDA2"
             />
+          </div>
+
+          <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <span className="font-medium text-gray-700">수집 항목:</span> 닉네임, 전화번호<br />
+              <span className="font-medium text-gray-700">이용 목적:</span> 다이빙 예약 및 운영 안내<br />
+              <span className="font-medium text-gray-700">보관 기간:</span> 탈퇴 시까지
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={privacyAgreed}
+                onChange={e => setPrivacyAgreed(e.target.checked)}
+                className="w-4 h-4 accent-blue-600"
+              />
+              <span className="text-sm font-medium">
+                <span className="text-blue-600">[필수]</span> 개인정보 수집 및 이용에 동의합니다
+              </span>
+            </label>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import ReserveButton from '@/components/ReserveButton'
+import NoShowButton from '@/components/NoShowButton'
 import Link from 'next/link'
 
 export default async function HomePage() {
@@ -7,15 +8,17 @@ export default async function HomePage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 강사 여부 확인
+  // 프로필 확인
   let isInstructor = false
+  let noShowCount = 0
   if (user) {
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('role, attend_count')
       .eq('id', user.id)
       .single()
     isInstructor = profile?.role === 'instructor'
+    noShowCount = (profile as { attend_count?: number } | null)?.attend_count ?? 0
   }
 
   // 내가 신청한 모임 ID 목록
@@ -33,6 +36,7 @@ export default async function HomePage() {
     .select(`
       id,
       meet_date,
+      end_date,
       max_participants,
       current_count,
       description,
@@ -44,15 +48,17 @@ export default async function HomePage() {
         length_m
       ),
       instructor:users!instructor_id (
-        name,
-        level
+        nickname,
+        level,
+        profile_color
       ),
       reservations (
         users (
           id,
-          name,
+          nickname,
           level,
-          role
+          role,
+          profile_color
         )
       )
     `)
@@ -63,7 +69,7 @@ export default async function HomePage() {
       {/* 헤더 */}
       <header className="bg-white shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blue-600">UDTS 다이빙</h1>
+          <h1 className="text-xl font-bold text-blue-600">UTS 다이빙</h1>
           <div className="flex gap-3 text-sm">
             {user ? (
               <div className="flex items-center gap-3">
@@ -72,7 +78,7 @@ export default async function HomePage() {
                     + 모임 만들기
                   </Link>
                 )}
-                <Link href="/reservations" className="text-gray-600 hover:text-blue-600">예약 확인</Link>
+                <Link href="/reservations" className="text-gray-600 hover:text-blue-600">마이페이지</Link>
                 <form action="/auth/signout" method="POST">
                   <button className="text-gray-500 hover:text-gray-700">로그아웃</button>
                 </form>
@@ -103,14 +109,17 @@ export default async function HomePage() {
                 ? meeting.instructor[0]
                 : meeting.instructor
               const isFull = meeting.current_count >= meeting.max_participants
+              const isDeadlinePassed = meeting.end_date ? new Date(meeting.end_date) < new Date() : false
               const date = new Date(meeting.meet_date)
 
-              // 예약자 중 수강생만 추출
-              type ReservationUser = { id: string; name: string; level: string | null; role: string } | null
+              // 예약자 분류
+              type ReservationUser = { id: string; nickname: string; level: string | null; role: string; profile_color: string | null } | null
               type ReservationRow = { users: ReservationUser | ReservationUser[] }
-              const students = (meeting.reservations as ReservationRow[] ?? [])
+              const reservationUsers = (meeting.reservations as ReservationRow[] ?? [])
                 .map((r) => Array.isArray(r.users) ? r.users[0] : r.users)
-                .filter((u): u is NonNullable<ReservationUser> => !!u && u.role === 'student')
+                .filter((u): u is NonNullable<ReservationUser> => !!u)
+              const students = reservationUsers.filter(u => u.role === 'student')
+              const affiliatedInstructors = reservationUsers.filter(u => u.role === 'instructor' && u.id !== meeting.instructor_id)
 
               return (
                 <div key={meeting.id} className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
@@ -146,6 +155,17 @@ export default async function HomePage() {
                     </span>
                   </div>
 
+                  {/* 신청 마감일 */}
+                  {meeting.end_date && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>⏰</span>
+                      <span className={isDeadlinePassed ? 'text-red-400 font-medium' : 'text-gray-500'}>
+                        신청 마감: {new Date(meeting.end_date).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+                        {isDeadlinePassed && ' (마감됨)'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* 3. 인원 + 참가자 목록 */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -161,22 +181,47 @@ export default async function HomePage() {
 
                     {/* 참가자 목록 */}
                     <div className="pl-1 space-y-1">
-                      {/* 강사 */}
+                      {/* 오너강사 */}
                       {instructor && (
                         <div className="flex items-center gap-1.5 text-sm">
-                          <span className="text-blue-600 font-bold">{instructor.name}</span>
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: (instructor as { profile_color?: string | null }).profile_color || '#3B82F6' }}
+                          />
+                          <span className="text-blue-600 font-bold">{(instructor as { nickname?: string }).nickname}</span>
                           {instructor.level && (
                             <span className="text-blue-400 text-xs">{instructor.level}</span>
                           )}
-                          <span className="text-blue-300 text-xs">· 강사</span>
+                          <span className="text-blue-300 text-xs">· 오너강사</span>
                         </div>
                       )}
+                      {/* 소속 강사 */}
+                      {affiliatedInstructors.map((ins) => (
+                        <div key={ins.id} className="flex items-center gap-1.5 text-sm">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: ins.profile_color || '#6B7280' }}
+                          />
+                          <span className="text-gray-700 font-medium">{ins.nickname}</span>
+                          {ins.level && (
+                            <span className="text-gray-400 text-xs">{ins.level}</span>
+                          )}
+                          <span className="text-gray-300 text-xs">· 강사</span>
+                        </div>
+                      ))}
                       {/* 수강생 */}
                       {students.map((student) => (
                         <div key={student.id} className="flex items-center gap-1.5 text-sm">
-                          <span className="text-gray-800">{student.name}</span>
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: student.profile_color || '#6B7280' }}
+                          />
+                          <span className="text-gray-800">{student.nickname}</span>
                           {student.level && (
                             <span className="text-gray-400 text-xs">{student.level}</span>
+                          )}
+                          {user?.id === meeting.instructor_id && (
+                            <NoShowButton targetUserId={student.id} meetingId={meeting.id} />
                           )}
                         </div>
                       ))}
@@ -191,6 +236,8 @@ export default async function HomePage() {
                         isFull={isFull}
                         isLoggedIn={!!user}
                         alreadyReserved={myReservations.includes(meeting.id)}
+                        isRestricted={noShowCount >= 3}
+                        isDeadlinePassed={isDeadlinePassed}
                       />
                     </div>
                     {user?.id === meeting.instructor_id && (

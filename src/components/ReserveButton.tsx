@@ -9,11 +9,15 @@ export default function ReserveButton({
   isFull,
   isLoggedIn,
   alreadyReserved,
+  isRestricted,
+  isDeadlinePassed,
 }: {
   meetingId: string
   isFull: boolean
   isLoggedIn: boolean
   alreadyReserved: boolean
+  isRestricted: boolean
+  isDeadlinePassed: boolean
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -26,12 +30,10 @@ export default function ReserveButton({
       router.push('/login')
       return
     }
-
     setLoading(true)
     setError('')
     const result = await reserveMeeting(meetingId)
     setLoading(false)
-
     if (result.error) {
       setError(result.error)
     } else {
@@ -39,6 +41,22 @@ export default function ReserveButton({
       setShowAlert(true)
       setTimeout(() => setShowAlert(false), 3000)
     }
+  }
+
+  if (isRestricted) {
+    return (
+      <button disabled className="w-full py-2 rounded-lg bg-red-100 text-red-500 text-sm font-medium">
+        노쇼 3회 누적으로 신청이 제한됩니다
+      </button>
+    )
+  }
+
+  if (isDeadlinePassed) {
+    return (
+      <button disabled className="w-full py-2 rounded-lg bg-gray-200 text-gray-500 text-sm font-medium">
+        신청 마감
+      </button>
+    )
   }
 
   if (isFull && !done) {

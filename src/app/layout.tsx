@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UDTS - 다이빙 예약 플랫폼",
+  title: "UTS - 다이빙 예약 플랫폼",
   description: "프리다이빙/스쿠버다이빙 강습 예약",
 };
 

@@ -64,6 +64,11 @@ export default async function HomePage() {
     `)
     .order('meet_date', { ascending: true })
 
+  const today = new Date().toISOString().split('T')[0]
+  const upcoming = (meetings ?? []).filter(m => m.meet_date >= today)
+  const completed = (meetings ?? []).filter(m => m.meet_date < today).reverse()
+  const sortedMeetings = [...upcoming, ...completed]
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
@@ -101,7 +106,7 @@ export default async function HomePage() {
           <p className="text-gray-400 text-center py-20">등록된 모임이 없습니다.</p>
         ) : (
           <div className="space-y-4">
-            {meetings.map((meeting) => {
+            {sortedMeetings.map((meeting) => {
               const center = Array.isArray(meeting.dive_centers)
                 ? meeting.dive_centers[0]
                 : meeting.dive_centers

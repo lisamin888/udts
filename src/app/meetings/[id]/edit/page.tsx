@@ -10,6 +10,7 @@ type DiveCenter = {
   location: string
   depth_m: number | null
   length_m: number | null
+  meetings: { count: number }[]
 }
 
 export default function EditMeetingPage() {
@@ -66,8 +67,11 @@ export default function EditMeetingPage() {
       // 센터 목록 로드
       const { data: centersData } = await supabase
         .from('dive_centers')
-        .select('id, name, location, depth_m, length_m')
-      if (centersData) setCenters(centersData)
+        .select('id, name, location, depth_m, length_m, meetings(count)')
+      if (centersData) {
+        const sorted = [...centersData].sort((a, b) => (b.meetings[0]?.count ?? 0) - (a.meetings[0]?.count ?? 0))
+        setCenters(sorted)
+      }
     }
     load()
   }, [id, router])
@@ -139,9 +143,10 @@ export default function EditMeetingPage() {
                 const depth = c.depth_m ? `수심 ${c.depth_m}M` : ''
                 const length = c.length_m ? `길이 ${c.length_m}M` : ''
                 const specs = [depth, length].filter(Boolean).join(' · ')
+                const count = c.meetings[0]?.count ?? 0
                 return (
                   <option key={c.id} value={c.id}>
-                    {c.name}{specs ? ` (${specs})` : ''}
+                    {c.name}{specs ? ` (${specs})` : ''} · {count}회
                   </option>
                 )
               })}

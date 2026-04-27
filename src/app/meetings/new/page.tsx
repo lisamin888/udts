@@ -10,6 +10,7 @@ type DiveCenter = {
   location: string
   depth_m: number | null
   length_m: number | null
+  meetings: { count: number }[]
 }
 
 export default function NewMeetingPage() {
@@ -43,9 +44,12 @@ export default function NewMeetingPage() {
       if (profile?.role !== 'instructor') { router.push('/'); return }
 
       // 센터 목록 로드
-      const { data } = await supabase.from('dive_centers').select('id, name, location, depth_m, length_m')
-      if (data) setCenters(data)
-      if (data && data.length > 0) setForm(f => ({ ...f, center_id: data[0].id }))
+      const { data } = await supabase.from('dive_centers').select('id, name, location, depth_m, length_m, meetings(count)')
+      if (data) {
+        const sorted = [...data].sort((a, b) => (b.meetings[0]?.count ?? 0) - (a.meetings[0]?.count ?? 0))
+        setCenters(sorted)
+        setForm(f => ({ ...f, center_id: sorted[0].id }))
+      }
     }
     load()
   }, [router])
@@ -109,9 +113,10 @@ export default function NewMeetingPage() {
                 const depth = c.depth_m ? `수심 ${c.depth_m}M` : ''
                 const length = c.length_m ? `길이 ${c.length_m}M` : ''
                 const specs = [depth, length].filter(Boolean).join(' · ')
+                const count = c.meetings[0]?.count ?? 0
                 return (
                   <option key={c.id} value={c.id}>
-                    {c.name}{specs ? ` (${specs})` : ''}
+                    {c.name}{specs ? ` (${specs})` : ''} · {count}회
                   </option>
                 )
               })}

@@ -113,10 +113,9 @@ export default function NewMeetingPage() {
                 const depth = c.depth_m ? `수심 ${c.depth_m}M` : ''
                 const length = c.length_m ? `길이 ${c.length_m}M` : ''
                 const specs = [depth, length].filter(Boolean).join(' · ')
-                const count = c.meetings[0]?.count ?? 0
                 return (
                   <option key={c.id} value={c.id}>
-                    {c.name}{specs ? ` (${specs})` : ''} · {count}회
+                    {c.name}{specs ? ` (${specs})` : ''}
                   </option>
                 )
               })}

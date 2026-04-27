@@ -67,7 +67,7 @@ export default function NewMeetingPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('로그인이 필요합니다.'); setLoading(false); return }
 
-    const meet_date = new Date(`${form.meet_date}T${form.meet_time}:00`)
+    const meet_date = new Date(`${form.meet_date}T${form.meet_time}:00+09:00`)
 
     const { error } = await supabase.from('meetings').insert({
       instructor_id: user.id,

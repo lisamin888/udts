@@ -114,9 +114,9 @@ function ReservationCard({ res, onCancel }: { res: Reservation; onCancel?: (id: 
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <span>📅</span>
         <span>
-          {date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+          {date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', timeZone: 'Asia/Seoul' })}
           {' '}
-          {date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+          {date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}
         </span>
       </div>
 

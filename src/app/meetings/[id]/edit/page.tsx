@@ -48,8 +48,8 @@ export default function EditMeetingPage() {
       }
 
       const date = new Date(meeting.meet_date)
-      const dateStr = date.toISOString().slice(0, 10)
-      const timeStr = date.toTimeString().slice(0, 5)
+      const dateStr = date.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) // YYYY-MM-DD
+      const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' })
 
       const endDateStr = meeting.end_date
         ? new Date(meeting.end_date).toISOString().slice(0, 10)
@@ -86,7 +86,7 @@ export default function EditMeetingPage() {
     setError('')
 
     const supabase = createClient()
-    const meet_date = new Date(`${form.meet_date}T${form.meet_time}:00`)
+    const meet_date = new Date(`${form.meet_date}T${form.meet_time}:00+09:00`)
 
     const { error } = await supabase
       .from('meetings')
